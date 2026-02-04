@@ -83,10 +83,10 @@ modelscope download --model cialtion/SimpleTool --include "RT-Qwen3-4B-AWQ/*" --
 
 ### 3. Start Server
 
-Edit `MODEL_PATH` in `server/rt_server.py`, then:
+Edit `MODEL_PATH` in `rt_server.py`, then:
 
 ```bash
-python server/rt-rt_server.py
+python rt_server.py
 ```
 
 ```

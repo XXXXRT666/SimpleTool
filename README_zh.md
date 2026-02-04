@@ -82,10 +82,10 @@ modelscope download --model cialtion/SimpleTool --include "RT-Qwen3-4B-AWQ/*" --
 
 ### 3. 启动服务器
 
-编辑 `server/rt_server.py` 中的 `MODEL_PATH`，然后：
+编辑 `rt_server.py` 中的 `MODEL_PATH`，然后：
 
 ```bash
-python server/rt_server.py
+python rt_server.py
 ```
 
 ```
