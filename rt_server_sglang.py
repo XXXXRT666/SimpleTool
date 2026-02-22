@@ -360,7 +360,7 @@ engine: Optional[SimpleToolEngine] = None
 async def lifespan(app: FastAPI):
     global engine
     engine = SimpleToolEngine(MODEL_PATH)
-    await asyncio.to_thread(engine.initialize)
+    engine.initialize()
     yield
     print("[Server] Shutdown")
 
