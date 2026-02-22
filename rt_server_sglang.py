@@ -118,6 +118,7 @@ class SimpleToolEngine:
             "tp_size": 1,
             "mem_fraction_static": 0.8,
             "context_length": 1024,
+            "enable_torch_compile": True,
         }
 
     def initialize(self):
