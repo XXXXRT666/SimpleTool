@@ -119,7 +119,7 @@ class SimpleToolEngine:
             "mem_fraction_static": 0.8,
             "context_length": 1024,
             "enable_torch_compile": True,
-            "quantization": "awq",
+            "quantization": "w8a8_int8",
         }
 
     def initialize(self):
