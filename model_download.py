@@ -8,7 +8,7 @@ import os
 from typing import Dict
 
 HF_REPO_ID = "Cialtion/SimpleTool"
-HF_MODEL_SUBDIR = "RT-Qwen3-4B-AWQ"
+HF_MODEL_SUBDIR = "RT-Qwen3-4B"
 MODEL_ROOT = os.environ.get("MODEL_ROOT", "./models")
 DEFAULT_MODEL_PATH = os.path.join(MODEL_ROOT, HF_MODEL_SUBDIR)
 
@@ -23,7 +23,7 @@ def _looks_like_model_dir(path: str) -> bool:
 
 def ensure_default_model(local_model_path: str = DEFAULT_MODEL_PATH) -> str:
     """
-    Ensure RT-Qwen3-4B-AWQ exists locally. Auto-download by default.
+    Ensure RT-Qwen3-4B exists locally. Auto-download by default.
     """
     model_path = os.path.abspath(local_model_path)
     if _looks_like_model_dir(model_path):
