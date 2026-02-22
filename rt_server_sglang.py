@@ -126,7 +126,7 @@ class SimpleToolEngine:
         engine_kwargs = self._build_engine_kwargs()
         self.engine = SGLangEngine(**engine_kwargs)
         print("[SimpleTool-SGLang] Model loaded!")
-        self._warmup()
+        print("[SimpleTool-SGLang] Warmup skipped.")
 
     def _warmup(self):
         print("[SimpleTool-SGLang] Warming up...")
@@ -213,12 +213,17 @@ class SimpleToolEngine:
 
         raise RuntimeError(f"Unexpected SGLang batch output type: {type(raw)!r}. Expected {expected_count} results.")
 
-    def _generate_single(self, prompt: str, sampling_params: Dict[str, Any]) -> str:
+    def _invoke_generate(self, *args, **kwargs) -> Any:
         assert self.engine is not None
+        result = self.engine.generate(*args, **kwargs)
+        if asyncio.iscoroutine(result):
+            return asyncio.run(result)
+        return result
+
+    def _generate_single(self, prompt: str, sampling_params: Dict[str, Any]) -> str:
         attempts = [
-            lambda: self.engine.generate(prompt, sampling_params=sampling_params),
-            lambda: self.engine.generate(prompt, sampling_params),
-            lambda: self.engine.generate(prompt, **sampling_params),
+            lambda: self._invoke_generate(prompt, sampling_params=sampling_params),
+            lambda: self._invoke_generate(prompt, sampling_params),
         ]
 
         errors: List[str] = []
@@ -232,7 +237,6 @@ class SimpleToolEngine:
         raise RuntimeError("; ".join(errors))
 
     def _generate_batch(self, prompts: List[str], max_tokens: int, temperature: float) -> List[str]:
-        assert self.engine is not None
         sampling_params = {
             "temperature": temperature,
             "max_new_tokens": max_tokens,
@@ -241,9 +245,8 @@ class SimpleToolEngine:
         }
 
         attempts = [
-            lambda: self.engine.generate(prompts, sampling_params=sampling_params),
-            lambda: self.engine.generate(prompts, sampling_params),
-            lambda: self.engine.generate(prompts, **sampling_params),
+            lambda: self._invoke_generate(prompts, sampling_params=sampling_params),
+            lambda: self._invoke_generate(prompts, sampling_params),
         ]
 
         errors: List[str] = []
@@ -357,7 +360,7 @@ engine: Optional[SimpleToolEngine] = None
 async def lifespan(app: FastAPI):
     global engine
     engine = SimpleToolEngine(MODEL_PATH)
-    engine.initialize()
+    await asyncio.to_thread(engine.initialize)
     yield
     print("[Server] Shutdown")
 
