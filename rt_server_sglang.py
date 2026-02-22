@@ -4,7 +4,6 @@ SimpleTool SGLang Server - Multi-Head Parallel Decoding for Real-Time Function C
 """
 
 import asyncio
-import inspect
 import json
 import os
 import time
@@ -112,54 +111,15 @@ class SimpleToolEngine:
         self.engine: Optional[SGLangEngine] = None
 
     def _build_engine_kwargs(self) -> Dict[str, Any]:
-        sig = inspect.signature(SGLangEngine.__init__)
-        accepted = set(sig.parameters.keys())
-        print(accepted)
-
-        kwargs: Dict[str, Any] = {}
-
-        if "model_path" in accepted:
-            kwargs["model_path"] = self.model_path
-        elif "model" in accepted:
-            kwargs["model"] = self.model_path
-        else:
-            raise RuntimeError("Unable to find model_path/model argument in SGLang Engine.")
-
-        if "trust_remote_code" in accepted:
-            kwargs["trust_remote_code"] = True
-
-        if "tp_size" in accepted:
-            kwargs["tp_size"] = 1
-        elif "tensor_parallel_size" in accepted:
-            kwargs["tensor_parallel_size"] = 1
-
-        if "mem_fraction_static" in accepted:
-            kwargs["mem_fraction_static"] = 0.8
-        elif "gpu_memory_utilization" in accepted:
-            kwargs["gpu_memory_utilization"] = 0.8
-
-        if "context_length" in accepted:
-            kwargs["context_length"] = 4096
-        elif "max_model_len" in accepted:
-            kwargs["max_model_len"] = 4096
-
-        if ENABLE_TORCH_COMPILE:
-            if "enable_torch_compile" in accepted:
-                kwargs["enable_torch_compile"] = True
-            elif "torch_compile" in accepted:
-                kwargs["torch_compile"] = True
-            elif "disable_torch_compile" in accepted:
-                kwargs["disable_torch_compile"] = False
-
-        if ENABLE_RADIX_CACHE:
-            if "enable_radix_cache" in accepted:
-                kwargs["enable_radix_cache"] = True
-            elif "radix_cache" in accepted:
-                kwargs["radix_cache"] = True
-            elif "disable_radix_cache" in accepted:
-                kwargs["disable_radix_cache"] = False
-
-        return kwargs
+        return {
+            "model_path": self.model_path,
+            "trust_remote_code": True,
+            "tp_size": 1,
+            "mem_fraction_static": 0.8,
+            "context_length": 4096,
+            "enable_torch_compile": ENABLE_TORCH_COMPILE,
+            "disable_radix_cache": not ENABLE_RADIX_CACHE,
+        }
 
     def initialize(self):
         self.model_path = ensure_default_model(self.model_path)
