@@ -80,12 +80,31 @@ huggingface-cli download Cialtion/SimpleTool --include "RT-Qwen3-4B-AWQ/*" --loc
 modelscope download --model cialtion/SimpleTool --include "RT-Qwen3-4B-AWQ/*" --local_dir ./models
 ```
 
+也可以跳过这一步。`rt_server.py` 和 `rt_server_sglang.py` 在首次启动时会自动下载
+`Cialtion/SimpleTool/RT-Qwen3-4B-AWQ` 到 `./models`。
+
 ### 3. 启动服务器
 
-编辑 `rt_server.py` 中的 `MODEL_PATH`，然后：
+vLLM 版本（原版）：
 
 ```bash
 python rt_server.py
+```
+
+SGLang 版本（新增，默认开启 `torch compile` 和 `radix cache`）：
+
+```bash
+uv pip install "sglang[all]"
+python rt_server_sglang.py
+```
+
+`rt_server_sglang.py` 默认模型路径是 `./models/RT-Qwen3-4B-AWQ`（对应 [HuggingFace](https://huggingface.co/Cialtion/SimpleTool/tree/main/RT-Qwen3-4B-AWQ)）。
+
+可选覆盖参数：
+
+```bash
+MODEL_PATH=./models/RT-Qwen3-4B-AWQ SERVER_PORT=8899 python rt_server_sglang.py
+SGLANG_ENABLE_TORCH_COMPILE=0 SGLANG_ENABLE_RADIX_CACHE=0 python rt_server_sglang.py
 ```
 
 ```

@@ -15,11 +15,12 @@ from pydantic import BaseModel
 import uvicorn
 
 from vllm import LLM, SamplingParams
+from model_download import DEFAULT_MODEL_PATH, ensure_default_model
 
 # ==================== Config ====================
-MODEL_PATH = "./models/RT-Qwen3-4B-AWQ"
-SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 8899
+MODEL_PATH = os.environ.get("MODEL_PATH", DEFAULT_MODEL_PATH)
+SERVER_HOST = os.environ.get("SERVER_HOST", "0.0.0.0")
+SERVER_PORT = int(os.environ.get("SERVER_PORT", "8899"))
 MAX_HISTORY = 6
 
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
@@ -83,6 +84,7 @@ class SimpleToolEngine:
         self.sampling_params = None
 
     def initialize(self):
+        self.model_path = ensure_default_model(self.model_path)
         print(f"[SimpleTool] Loading model: {self.model_path}")
         self.llm = LLM(
             model=self.model_path,
