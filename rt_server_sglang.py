@@ -3,18 +3,19 @@
 SimpleTool SGLang Server - Multi-Head Parallel Decoding for Real-Time Function Calling
 """
 
-import inspect
 import asyncio
+import inspect
 import json
 import os
 import time
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import uvicorn
+
 from model_download import DEFAULT_MODEL_PATH, ensure_default_model
 
 try:
@@ -113,6 +114,7 @@ class SimpleToolEngine:
     def _build_engine_kwargs(self) -> Dict[str, Any]:
         sig = inspect.signature(SGLangEngine.__init__)
         accepted = set(sig.parameters.keys())
+        print(accepted)
 
         kwargs: Dict[str, Any] = {}
 
@@ -162,10 +164,7 @@ class SimpleToolEngine:
     def initialize(self):
         self.model_path = ensure_default_model(self.model_path)
         print(f"[SimpleTool-SGLang] Loading model: {self.model_path}")
-        print(
-            f"[SimpleTool-SGLang] Flags: torch_compile={ENABLE_TORCH_COMPILE}, "
-            f"radix_cache={ENABLE_RADIX_CACHE}"
-        )
+        print(f"[SimpleTool-SGLang] Flags: torch_compile={ENABLE_TORCH_COMPILE}, radix_cache={ENABLE_RADIX_CACHE}")
         engine_kwargs = self._build_engine_kwargs()
         self.engine = SGLangEngine(**engine_kwargs)
         print("[SimpleTool-SGLang] Model loaded!")
@@ -254,10 +253,7 @@ class SimpleToolEngine:
             if isinstance(raw.get("text"), list) and len(raw["text"]) == expected_count:
                 return [self._extract_text(item) for item in raw["text"]]
 
-        raise RuntimeError(
-            f"Unexpected SGLang batch output type: {type(raw)!r}. "
-            f"Expected {expected_count} results."
-        )
+        raise RuntimeError(f"Unexpected SGLang batch output type: {type(raw)!r}. Expected {expected_count} results.")
 
     def _generate_single(self, prompt: str, sampling_params: Dict[str, Any]) -> str:
         assert self.engine is not None
