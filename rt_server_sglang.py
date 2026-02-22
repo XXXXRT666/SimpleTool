@@ -4,11 +4,12 @@ SimpleTool SGLang Server - Multi-Head Parallel Decoding for Real-Time Function C
 """
 
 import asyncio
+import inspect
 import json
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -266,9 +267,71 @@ class SimpleToolEngine:
 
         raise RuntimeError("; ".join(errors))
 
-    def call(self, request: FCRequest) -> FCResponse:
-        start = time.perf_counter()
+    async def _invoke_generate_async(self, *args, **kwargs) -> Any:
+        assert self.engine is not None
 
+        async_generate = getattr(self.engine, "async_generate", None)
+        if async_generate is not None:
+            result = async_generate(*args, **kwargs)
+            if asyncio.iscoroutine(result):
+                return await result
+            return result
+
+        generate = getattr(self.engine, "generate")
+        if inspect.iscoroutinefunction(generate):
+            return await generate(*args, **kwargs)
+
+        result = await asyncio.to_thread(generate, *args, **kwargs)
+        if asyncio.iscoroutine(result):
+            return await result
+        return result
+
+    async def _generate_single_async(self, prompt: str, sampling_params: Dict[str, Any]) -> str:
+        attempts = [
+            lambda: self._invoke_generate_async(prompt, sampling_params=sampling_params),
+            lambda: self._invoke_generate_async(prompt, sampling_params),
+        ]
+
+        errors: List[str] = []
+        for attempt in attempts:
+            try:
+                result = await attempt()
+                return self._extract_text(result)
+            except Exception as exc:
+                errors.append(str(exc))
+
+        raise RuntimeError("; ".join(errors))
+
+    async def _generate_batch_async(self, prompts: List[str], max_tokens: int, temperature: float) -> List[str]:
+        sampling_params = {
+            "temperature": temperature,
+            "max_new_tokens": max_tokens,
+            "stop": STOP_TOKENS,
+            "skip_special_tokens": False,
+        }
+
+        attempts = [
+            lambda: self._invoke_generate_async(prompts, sampling_params=sampling_params),
+            lambda: self._invoke_generate_async(prompts, sampling_params),
+        ]
+
+        errors: List[str] = []
+        for attempt in attempts:
+            try:
+                raw = await attempt()
+                return self._normalize_batch_output(raw, expected_count=len(prompts))
+            except Exception as exc:
+                errors.append(str(exc))
+
+        texts = []
+        for prompt in prompts:
+            texts.append(await self._generate_single_async(prompt, sampling_params))
+        if len(texts) == len(prompts):
+            return texts
+
+        raise RuntimeError("; ".join(errors))
+
+    def _build_generation_inputs(self, request: FCRequest) -> Tuple[List[str], int]:
         tools_json = self._build_tools_json(request.tools)
         system_prompt = SYSTEM_TEMPLATE.format(tools_json=tools_json)
 
@@ -293,12 +356,9 @@ class SimpleToolEngine:
             active_tags = ["<content>"] + active_tags
 
         prompts = [full_prefix + tag for tag in active_tags]
-        texts = self._generate_batch(
-            prompts,
-            max_tokens=request.max_tokens,
-            temperature=request.temperature,
-        )
+        return prompts, max_args
 
+    def _build_response(self, request: FCRequest, texts: List[str], max_args: int, start: float) -> FCResponse:
         latency_ms = (time.perf_counter() - start) * 1000
 
         heads: Dict[str, str] = {}
@@ -347,9 +407,25 @@ class SimpleToolEngine:
             latency_ms=latency_ms,
         )
 
+    def call(self, request: FCRequest) -> FCResponse:
+        start = time.perf_counter()
+        prompts, max_args = self._build_generation_inputs(request)
+        texts = self._generate_batch(
+            prompts,
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+        )
+        return self._build_response(request, texts, max_args, start)
+
     async def call_async(self, request: FCRequest) -> FCResponse:
-        # Move blocking engine generation off the event loop.
-        return await asyncio.to_thread(self.call, request)
+        start = time.perf_counter()
+        prompts, max_args = self._build_generation_inputs(request)
+        texts = await self._generate_batch_async(
+            prompts,
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+        )
+        return self._build_response(request, texts, max_args, start)
 
 
 # ==================== FastAPI ====================
