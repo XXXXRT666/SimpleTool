@@ -116,9 +116,7 @@ class SimpleToolEngine:
             "trust_remote_code": True,
             "tp_size": 1,
             "mem_fraction_static": 0.8,
-            "context_length": 4096,
-            "enable_torch_compile": ENABLE_TORCH_COMPILE,
-            "disable_radix_cache": not ENABLE_RADIX_CACHE,
+            "context_length": 1024,
         }
 
     def initialize(self):
